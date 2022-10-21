@@ -844,10 +844,128 @@ fcos
 #%%
 import math
 img_size = [512, 512]
-math.prod(img_size)
 gt_h = gt[..., 2] - gt[..., 0] 
 gt_w = gt[..., 3] - gt[...,1]
 gt_size = tf.sqrt(gt_h * gt_w * math.prod(img_size))
 idx = gt_size < 64
-gt
-gt[idx]
+tmp = tf.expand_dims(idx, axis=-1)
+gt_tmp = tf.expand_dims(gt, axis=-2)
+gt_tmp[tmp]
+tf.reshape(gt[idx], [8, -1, 5])
+g3 = tf.boolean_mask(gt, gt_size <= 64.)
+g4 = tf.boolean_mask(gt, tf.cast(gt_size >= 64., tf.float32)*tf.cast(gt_size <= 128., tf.float32) > 0.)
+g5 = tf.boolean_mask(gt, tf.cast(gt_size >= 128., tf.float32)*tf.cast(gt_size <= 256., tf.float32) > 0.)
+g6 = tf.boolean_mask(gt, tf.cast(gt_size >= 256., tf.float32)*tf.cast(gt_size <= 512., tf.float32) > 0.)
+g7 = tf.boolean_mask(gt, gt_size >= 512.)
+
+s3, s4, s5, s6, s7 = 8, 16, 32, 64, 128
+
+class_id = tf.cast(g3[..., 4], dtype=tf.int32)
+feature_map_shape = tf.cast(img_size, dtype=tf.float32) / s3
+
+gbbox_y1, gbbox_x1, gbbox_y2, gbbox_x2 = tf.split(
+    g3[...,:-1] * tf.tile(feature_map_shape, [2]), 4, axis=-1
+    )
+
+gbbox_y1 = tf.reshape(gbbox_y1, [1, 1, -1])
+gbbox_x1 = tf.reshape(gbbox_x1, [1, 1, -1])
+gbbox_y2 = tf.reshape(gbbox_y2, [1, 1, -1])
+gbbox_x2 = tf.reshape(gbbox_x2, [1, 1, -1])
+
+num_g = tf.shape(gbbox_y1)[-1]
+
+h3 = tf.range(0., feature_map_shape[0])
+w3 = tf.range(0., feature_map_shape[1])
+grid_y3, grid_x3 = tf.meshgrid(h3, w3)
+
+grid_y = tf.expand_dims(grid_y3, -1)
+grid_x = tf.expand_dims(grid_x3, -1)
+grid_y = tf.tile(grid_y, [1, 1, num_g])
+grid_x = tf.tile(grid_x, [1, 1, num_g])
+
+dist_l = grid_x - gbbox_x1
+dist_r = gbbox_x2 - grid_x
+dist_t = grid_y - gbbox_y1
+dist_b = gbbox_y2 - grid_y
+
+grid_y_mask = tf.cast(dist_t > 0., tf.float32) * tf.cast(dist_b > 0., tf.float32)
+grid_x_mask = tf.cast(dist_l > 0., tf.float32) * tf.cast(dist_r > 0., tf.float32)
+
+heatmask = grid_y_mask * grid_x_mask
+tf.where(heatmask!=0.)
+
+dist_l *= heatmask
+dist_r *= heatmask
+dist_t *= heatmask
+dist_b *= heatmask
+loc = tf.reduce_max(heatmask, axis=-1)
+tf.where(loc != 0.)
+dist_area = (dist_l + dist_r) * (dist_t + dist_b)
+dist_area_ = dist_area + (1. - heatmask) * 1e8
+dist_area_min = tf.reduce_min(dist_area_, axis=-1, keepdims=True)
+dist_mask = tf.cast(tf.equal(dist_area, dist_area_min), tf.float32) * tf.expand_dims(loc, axis=-1)
+dist_l *= dist_mask
+dist_r *= dist_mask
+dist_t *= dist_mask
+dist_b *= dist_mask
+dist_l = tf.reduce_max(dist_l, axis=-1)
+dist_r = tf.reduce_max(dist_r, axis=-1)
+dist_t = tf.reduce_max(dist_t, axis=-1)
+dist_b = tf.reduce_max(dist_b, axis=-1)
+tf.where(dist_b)
+
+dist_pred_l = dist_pred[..., 0]
+dist_pred_r = dist_pred[..., 1]
+dist_pred_t = dist_pred[..., 2]
+dist_pred_b = dist_pred[..., 3]
+inter_width = tf.minimum(dist_l, dist_pred_l) + tf.minimum(dist_r, dist_pred_r)
+inter_height = tf.minimum(dist_t, dist_pred_t) + tf.minimum(dist_b, dist_pred_b)
+inter_area = inter_width * inter_height
+union_area = (dist_l+dist_r)*(dist_t+dist_b) + (dist_pred_l+dist_pred_r)*(dist_pred_t+dist_pred_b) - inter_area
+iou = inter_area / (union_area+1e-12)
+iou_loss = tf.reduce_sum(-tf.math.log(iou+1e-12)*loc)
+
+lr_min = tf.minimum(dist_l, dist_r)
+tb_min = tf.minimum(dist_t, dist_b)
+lr_max = tf.maximum(dist_l, dist_r)
+tb_max = tf.maximum(dist_t, dist_b)
+center_pred = tf.squeeze(center_pred)
+center_gt = tf.sqrt(lr_min*tb_min/(lr_max*tb_max+1e-12))
+# center_loss = tf.square(center_pred - center_gt)
+center_loss = tf.keras.backend.binary_crossentropy(output=center_pred, target=center_gt, from_logits=True)
+center_loss = tf.reduce_sum(center_loss)
+
+zero_like_heat = tf.expand_dims(tf.zeros(pshape, dtype=tf.float32), axis=-1)
+heatmap_gt = []
+for i in range(self.num_classes):
+    exist_i = tf.equal(class_id, i)
+    heatmask_i = tf.boolean_mask(heatmask, exist_i, axis=2)
+    heatmap_i = tf.cond(
+        tf.equal(tf.shape(heatmask_i)[-1], 0),
+        lambda: zero_like_heat,
+        lambda: tf.reduce_max(heatmask_i, axis=2, keepdims=True)
+    )
+    heatmap_gt.append(heatmap_i)
+heatmap_gt = tf.concat(heatmap_gt, axis=-1)
+heatmap_pos_loss = -.25 * tf.pow(1.-tf.sigmoid(heatmap_pred), 2.) * tf.math.log_sigmoid(heatmap_pred) * heatmap_gt
+heatmap_neg_loss = -.25 * tf.pow(tf.sigmoid(heatmap_pred), 2.) * (-heatmap_pred+tf.math.log_sigmoid(heatmap_pred)) * (1.-heatmap_gt)
+heatmap_loss = tf.reduce_sum(heatmap_pos_loss) + tf.reduce_sum(heatmap_neg_loss)
+
+
+
+
+h3 = tf.range(0., tf.cast(p3shape[0], tf.float32), dtype=tf.float32)
+w3 = tf.range(0., tf.cast(p3shape[1], tf.float32), dtype=tf.float32)
+h4 = tf.range(0., tf.cast(p4shape[0], tf.float32), dtype=tf.float32)
+w4 = tf.range(0., tf.cast(p4shape[1], tf.float32), dtype=tf.float32)
+h5 = tf.range(0., tf.cast(p5shape[0], tf.float32), dtype=tf.float32)
+w5 = tf.range(0., tf.cast(p5shape[1], tf.float32), dtype=tf.float32)
+h6 = tf.range(0., tf.cast(p6shape[0], tf.float32), dtype=tf.float32)
+w6 = tf.range(0., tf.cast(p6shape[1], tf.float32), dtype=tf.float32)
+h7 = tf.range(0., tf.cast(p7shape[0], tf.float32), dtype=tf.float32)
+w7 = tf.range(0., tf.cast(p7shape[1], tf.float32), dtype=tf.float32)
+[grid_x3, grid_y3] = tf.meshgrid(w3, h3)
+[grid_x4, grid_y4] = tf.meshgrid(w4, h4)
+[grid_x5, grid_y5] = tf.meshgrid(w5, h5)
+[grid_x6, grid_y6] = tf.meshgrid(w6, h6)
+[grid_x7, grid_y7] = tf.meshgrid(w7, h7)
