@@ -371,7 +371,6 @@ def build_args():
     parser.add_argument("--weight_decay", type=float, default=1e-4)
     parser.add_argument("--alpha", type=float, default=0.25)
     parser.add_argument("--gamma", type=float, default=2.0)
-    parser.add_argument("--delta", type=float, default=1.0)
 
     try:
         args = parser.parse_args()
