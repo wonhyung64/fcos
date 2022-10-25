@@ -401,6 +401,3 @@ img, gt_regs, gt_ctrs, gt_clfs = next(train_set)
 pred_regs, pred_ctrs, pred_clfs = fcos(img)
 reg_loss, ctr_loss, clf_loss = compute_loss(gt_regs, gt_ctrs, gt_clfs, pred_regs, pred_ctrs, pred_clfs, alpha, gamma)
 final_bboxes, final_labels, final_scores = decoder(pred_regs, pred_ctrs, pred_clfs)
-
-
-#%%
