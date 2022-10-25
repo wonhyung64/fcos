@@ -18,12 +18,12 @@ def preprocess(dataset, img_size, num_classes, split=None):
     ground_truth = tf.concat([gt_boxes, gt_labels], axis=-1) 
 
     if split == "train":
-        gt_regs, gt_ctrs, gt_clfs = label_encoder(ground_truth)
+        gt_regs, gt_ctrs, gt_clfs = label_encoder(ground_truth, img_size, num_classes)
         return img, gt_regs, gt_ctrs, gt_clfs
     else:
         return img, ground_truth
 
-def label_encoder(gt, img_size=[512, 512], num_classes=20):
+def label_encoder(gt, img_size, num_classes):
     s3, s4, s5, s6, s7 = 8, 16, 32, 64, 128
     gt_h = gt[..., 2] - gt[..., 0] 
     gt_w = gt[..., 3] - gt[...,1]
