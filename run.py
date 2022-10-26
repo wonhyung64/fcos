@@ -18,7 +18,7 @@ datasets, labels, train_num, valid_num, test_num = load_dataset(name=args.name, 
 train_set, valid_set, test_set = build_dataset(datasets, args.batch_size, args.img_size, labels.num_classes)
 colors = tf.random.uniform((labels.num_classes, 4), maxval=256, dtype=tf.int32)
 
-model = build_model(args, labels)
+model, buffer_model = build_model(args, labels)
 decoder = DecodePredictions(args.img_size)
 reg_fn = FCOSBoxLoss(args)
 ctr_fn = FCOSCenternessLoss(args)
@@ -27,7 +27,8 @@ optimizer = build_optimizer(args.batch_size, train_num, args.momentum)
 
 train_time = train(run, args.epochs, args.batch_size,
     train_num, valid_num, train_set, valid_set, labels,
-    model, decoder, reg_fn, ctr_fn, clf_fn, optimizer, weights_dir)
+    model, buffer_model, args.weights_decay, decoder,
+    reg_fn, ctr_fn, clf_fn, optimizer, weights_dir)
 
 model.load_weights(f"{weights_dir}.h5")
 mean_ap, mean_evaltime = evaluate(run, test_set, test_num, model, decoder, labels, "test", colors)

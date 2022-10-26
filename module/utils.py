@@ -34,6 +34,8 @@ def train(
     valid_set,
     labels,
     model,
+    buffer_model,
+    weights_decay,
     decoder,
     reg_fn,
     ctr_fn,
@@ -47,7 +49,9 @@ def train(
         epoch_progress = tqdm(range(train_num // batch_size))
         for _ in epoch_progress:
             img, gt_regs, gt_ctrs, gt_clfs = next(train_set)
-            reg_loss, ctr_loss, clf_loss, total_loss = forward_backward(img, (gt_regs, gt_ctrs, gt_clfs), model, reg_fn, ctr_fn, clf_fn, optimizer)
+            reg_loss, ctr_loss, clf_loss, total_loss = forward_backward(
+                img, (gt_regs, gt_ctrs, gt_clfs), model, buffer_model, weights_decay, reg_fn, ctr_fn, clf_fn, optimizer
+                )
             record_train_loss(run, reg_loss, ctr_loss, clf_loss, total_loss)
 
             epoch_progress.set_description(

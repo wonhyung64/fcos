@@ -18,6 +18,8 @@ def forward_backward(
     img,
     true,
     model,
+    buffer_model,
+    weights_decay,
     reg_fn,
     ctr_fn,
     clf_fn,
@@ -33,5 +35,15 @@ def forward_backward(
 
     grads = tape.gradient(total_loss, model.trainable_weights)
     optimizer.apply_gradients(zip(grads, model.trainable_weights))
+    weight_decay_decoupled(model, buffer_model, weights_decay)
 
     return reg_loss, ctr_loss, clf_loss, total_loss
+
+
+def weight_decay_decoupled(model, buffer_model, decay_rate):
+    # weight decay
+    for var, buffer_var in zip(model.trainable_weights, buffer_model.trainable_weights):
+        var.assign(var - decay_rate * buffer_var)
+    # update buffer model
+    for var, buffer_var in zip(model.trainable_weights, buffer_model.trainable_weights):
+        buffer_var.assign(var)

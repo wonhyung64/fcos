@@ -10,7 +10,11 @@ def build_model(args, labels):
     fcos = FCOS(labels.num_classes)
     fcos.build(input_shape)
 
-    return fcos
+    buffer_model = FCOS(labels.num_classes)
+    buffer_model.build(input_shape)
+    buffer_model.set_weigths(fcos.get_weights())
+
+    return fcos, buffer_model
 
 
 class FCOS(Model):
