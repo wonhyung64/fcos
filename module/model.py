@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow_addons as tfa
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Conv2D, ReLU, Lambda, Layer
 
@@ -65,6 +66,7 @@ def build_head(output_filters, bias_init):
         head.add(
             Conv2D(256, 3, padding="same", kernel_initializer=kernel_init)
         )
+        head.add(tfa.layers.GroupNormalization(32))
         head.add(ReLU())
     head.add(
         Conv2D(
