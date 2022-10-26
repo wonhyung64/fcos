@@ -23,28 +23,65 @@ class FCOS(Model):
         self.num_classes = num_classes
         self.fpn = FeaturePyramid(backbone)
 
+        self.box_head = self._build_head(4, "zeros")
         prior_probability = tf.constant_initializer(-np.log((1 - 0.01) / 0.01))
-        self.cls_head = build_head(self.num_classes + 1, prior_probability)
-        self.box_head = build_head(4, "zeros")
-        self.divider = Lambda(lambda x: [x[..., :-1], x[..., -1:]])
+        self.cls_neck = self._build_head(None, prior_probability)
+        self.ctr_head = Conv2D(
+            1, 3, 1, padding="same",
+            kernel_initializer=tf.initializers.RandomNormal(0.0, 0.01),
+            )
+        self.clf_head = Conv2D(
+            self.num_classes, 3, 1, padding="same",
+            kernel_initializer=tf.initializers.RandomNormal(0.0, 0.01),
+            bias_initializer=prior_probability
+            )
 
+    def _build_head(self, output_filters, bias_init):
+        head = tf.keras.Sequential([tf.keras.Input(shape=[None, None, 256])])
+        kernel_init = tf.initializers.RandomNormal(0.0, 0.01)
+        for _ in range(4):
+            head.add(
+                Conv2D(256, 3, padding="same", kernel_initializer=kernel_init)
+            )
+            head.add(tfa.layers.GroupNormalization(32))
+            head.add(ReLU())
+
+        if output_filters != None:
+            head.add(
+                Conv2D(
+                    output_filters,
+                    3,
+                    1,
+                    padding="same",
+                    kernel_initializer=kernel_init,
+                    bias_initializer=bias_init,
+                )
+            )
+
+        return head
 
     @tf.function
     def call(self, image, training=False):
         features = self.fpn(image, training=training)
         N = tf.shape(image)[0]
-        cls_outputs = []
+        clf_outputs = []
         ctr_outputs = []
         box_outputs = []
         for feature in features:
             box_outputs.append(tf.reshape(tf.exp(self.box_head(feature)), [N, -1, 4]))
-            cls_output = self.cls_head(feature)
-            cls_outputs.append(
-                tf.reshape(tf.sigmoid(cls_output), [N, -1, self.num_classes+1])
+            cls_neck = self.cls_neck(feature)
+            ctr_output = self.ctr_head(cls_neck)
+            ctr_outputs.append(
+                tf.reshape(tf.sigmoid(ctr_output), [N, -1, 1])
             )
+            clf_output = self.clf_head(cls_neck)
+            clf_outputs.append(
+                tf.reshape(tf.sigmoid(clf_output), [N, -1, self.num_classes])
+            )
+
         box_outputs = tf.concat(box_outputs, axis=1)
-        cls_outputs = tf.concat(cls_outputs, axis=1)
-        clf_outputs, ctr_outputs = self.divider(cls_outputs)
+        ctr_outputs = tf.concat(ctr_outputs, axis=1)
+        clf_outputs = tf.concat(clf_outputs, axis=1)
 
         return (box_outputs, ctr_outputs, clf_outputs)
 
@@ -62,28 +99,6 @@ def get_backbone():
         inputs=[backbone.inputs], outputs=[c3_output, c4_output, c5_output]
     )
 
-
-def build_head(output_filters, bias_init):
-    head = tf.keras.Sequential([tf.keras.Input(shape=[None, None, 256])])
-    kernel_init = tf.initializers.RandomNormal(0.0, 0.01)
-    for _ in range(4):
-        head.add(
-            Conv2D(256, 3, padding="same", kernel_initializer=kernel_init)
-        )
-        head.add(tfa.layers.GroupNormalization(32))
-        head.add(ReLU())
-    head.add(
-        Conv2D(
-            output_filters,
-            3,
-            1,
-            padding="same",
-            kernel_initializer=kernel_init,
-            bias_initializer=bias_init,
-        )
-    )
-
-    return head
 
 class FeaturePyramid(Layer):
 
