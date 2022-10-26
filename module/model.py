@@ -99,11 +99,13 @@ class FeaturePyramid(Layer):
         self.conv_c6_3x3 = Conv2D(256, 3, 2, "same")
         self.conv_c7_3x3 = Conv2D(256, 3, 2, "same")
         self.upsample_2x = CustomUpSampling2D(2)
+        self.group_norm = tfa.layers.GroupNormalization(32)
 
     @tf.function
     def call(self, images, training=False):
         c3_output, c4_output, c5_output = self.backbone(images, training=training)
         p3_output = self.conv_c3_1x1(c3_output)
+        # p3_output = self.group_norm(p3_output)
         p4_output = self.conv_c4_1x1(c4_output)
         p5_output = self.conv_c5_1x1(c5_output)
         p4_output = p4_output + self.upsample_2x(p5_output)
@@ -111,7 +113,7 @@ class FeaturePyramid(Layer):
         p3_output = self.conv_c3_3x3(p3_output)
         p4_output = self.conv_c4_3x3(p4_output)
         p5_output = self.conv_c5_3x3(p5_output)
-        p6_output = self.conv_c6_3x3(c5_output)
+        p6_output = self.conv_c6_3x3(p5_output)
         p7_output = self.conv_c7_3x3(tf.nn.relu(p6_output))
 
         return p3_output, p4_output, p5_output, p6_output, p7_output
