@@ -8,7 +8,7 @@ def build_args():
     parser.add_argument("--epochs", type=int, default=90)
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--img-size", nargs="+", type=int, default=[512, 512])
-    parser.add_argument("--weight_decay", type=float, default=1e-4)
+    parser.add_argument("--weights_decay", type=float, default=1e-4)
     parser.add_argument("--alpha", type=float, default=0.25)
     parser.add_argument("--gamma", type=float, default=2.0)
     parser.add_argument("--momentum", type=float, default=0.9)
