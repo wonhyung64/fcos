@@ -1,0 +1,2 @@
+NEPTUNE_API_KEY = "eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIwZTNlODVlMi0xMzIyLTQwYzQtYmNkYy1kNWYyZmM1MGFiMjcifQ=="
+NEPTUNE_PROJECT = "wonhyung64/model-fcos"
