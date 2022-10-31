@@ -34,3 +34,19 @@ train_time = train(run, args.epochs, args.batch_size,
 model.load_weights(f"{weights_dir}.h5")
 mean_ap, mean_evaltime = evaluate(run, test_set, test_num, model, decoder, labels, "test", colors)
 record_result(run, weights_dir, train_time, mean_ap, mean_evaltime)
+
+'''
+#%%
+model.load_weights("/Users/wonhyung64/Downloads/MOD3_34.h5")
+#%%
+img, _, _, _ = next(train_set)
+tf.where(_[1] != 0)
+_[15, 5353]
+set(tf.argmax(_[7], -1).numpy())
+set(tf.argmax(pred_clfs, -1).numpy())
+pred_regs, pred_ctrs, pred_clfs = model(img[0:1])
+final_bboxes, final_scores, final_labels = decoder(pred_regs, pred_ctrs, pred_clfs)
+draw_output(img[16], final_bboxes, final_labels, final_scores, labels, colors)
+tf.keras.utils.array_to_img(img[15])
+labels.names
+'''

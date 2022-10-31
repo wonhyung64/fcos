@@ -43,7 +43,7 @@ class FCOS(Model):
             head.add(
                 Conv2D(256, 3, padding="same", kernel_initializer=kernel_init)
             )
-            head.add(tfa.layers.GroupNormalization(32))
+            # head.add(tfa.layers.GroupNormalization(32))
             head.add(ReLU())
 
         if output_filters != None:
