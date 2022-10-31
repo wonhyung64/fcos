@@ -26,7 +26,10 @@ class FCOSBoxLoss(tf.keras.losses.Loss):
         iou = self._compute_iou(true, pred)
 
         pos_mask = tf.expand_dims(tf.where(tf.reduce_sum(true, -1) != 0, 1., 0.), -1)
-        reg_loss = tf.reduce_sum(-tf.math.log(iou+tf.constant(1e-12)) * pos_mask) / self.N
+        pos_num = tf.reduce_sum(pos_mask, axis=[1,2])
+
+        reg_loss = tf.reduce_sum(-tf.math.log(iou+tf.constant(1e-12)) * pos_mask, axis=[1,2])
+        reg_loss = tf.reduce_mean(reg_loss / pos_num)
 
         return reg_loss
 
@@ -44,7 +47,10 @@ class FCOSCenternessLoss(tf.keras.losses.Loss):
 
     @tf.function
     def call(self, true, pred):
-        ctr_loss = tf.reduce_sum(self._bce_loss(true, pred)) / self.N
+        pos_mask = tf.expand_dims(tf.where(tf.reduce_sum(true, -1) != 0, 1., 0.), -1)
+        pos_num = tf.reduce_sum(pos_mask, axis=[1,2])
+        ctr_loss = tf.reduce_sum(self._bce_loss(true, pred), axis=[1,2])
+        ctr_loss = tf.reduce_mean(ctr_loss / pos_num)
 
         return ctr_loss
 
@@ -64,9 +70,13 @@ class FCOSClassificationLoss(tf.keras.losses.Loss):
 
     @tf.function
     def call(self, true, pred):
+        pos_mask = tf.expand_dims(tf.where(tf.reduce_sum(true, -1) != 0, 1., 0.), -1)
+        pos_num = tf.reduce_sum(pos_mask, axis=[1,2])
+
         clf_loss = self._bce_loss(true, pred)
         alpha = tf.where(tf.equal(true, 1.0), self.alpha, (1.0 - self.alpha))
         pt = tf.where(tf.equal(true, 1.0), pred, tf.constant(1.) - pred)
-        clf_loss = tf.reduce_sum(alpha * tf.pow(tf.constant(1.) - pt, self.gamma) * clf_loss) / self.N
+        clf_loss = tf.reduce_sum(alpha * tf.pow(tf.constant(1.) - pt, self.gamma) * clf_loss, axis=[1, 2])
+        clf_loss = tf.reduce_mean(clf_loss / pos_num)
 
         return clf_loss

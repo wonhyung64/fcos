@@ -25,6 +25,8 @@ ctr_fn = FCOSCenternessLoss(args)
 clf_fn = FCOSClassificationLoss(args)
 optimizer = build_optimizer(args.batch_size, train_num, args.momentum)
 
+
+#%%
 train_time = train(run, args.epochs, args.batch_size,
     train_num, valid_num, train_set, valid_set, labels,
     model, buffer_model, args.weights_decay, decoder,
