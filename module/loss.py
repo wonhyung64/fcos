@@ -47,10 +47,11 @@ class FCOSCenternessLoss(tf.keras.losses.Loss):
 
     @tf.function
     def call(self, true, pred):
-        pos_mask = tf.expand_dims(tf.where(tf.reduce_sum(true, -1) != 0, 1., 0.), -1)
-        pos_num = tf.reduce_sum(pos_mask, axis=[1,2])
+        # pos_mask = tf.expand_dims(tf.where(tf.reduce_sum(true, -1) != 0, 1., 0.), -1)
+        # pos_num = tf.reduce_sum(pos_mask, axis=[1,2])
         ctr_loss = tf.reduce_sum(self._bce_loss(true, pred), axis=[1,2])
-        ctr_loss = tf.reduce_mean(ctr_loss / pos_num)
+        # ctr_loss = tf.reduce_mean(ctr_loss / pos_num)
+        ctr_loss = tf.reduce_mean(ctr_loss)
 
         return ctr_loss
 
