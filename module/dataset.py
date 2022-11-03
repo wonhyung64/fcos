@@ -102,7 +102,7 @@ def build_dataset(datasets, batch_size, img_size, num_classes):
 def preprocess(dataset, img_size, num_classes, split=None):
     img = dataset["image"]
     img = tf.image.resize(img, img_size, "bicubic")
-    img = tf.image.per_image_standardization(img)
+    # img = tf.image.per_image_standardization(img)
     gt_boxes = dataset["objects"]["bbox"]
     gt_labels = dataset["objects"]["label"]
     gt_labels = tf.cast(tf.expand_dims(gt_labels, axis=-1), dtype=tf.float32)
